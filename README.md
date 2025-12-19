@@ -1,43 +1,90 @@
-# Svelte + Vite
+# Bot Kantin PCR (Frontend)
 
-This template should help get you started developing with Svelte in Vite.
+Project ini adalah antarmuka frontend untuk **Bot Kantin PCR**, sebuah aplikasi web cerdas yang memungkinkan pengguna berinteraksi dengan layanan kantin menggunakan teks maupun suara.
 
-## Recommended IDE Setup
+Aplikasi ini dibangun menggunakan teknologi web modern, integrasi AI lokal di browser, dan backend berbasis workflow n8n.
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## 🚀 Fitur Utama
 
-## Need an official Svelte framework?
+-   **Interaksi Multimoda**: Dukungan fleksibel untuk berbagai cara komunikasi:
+    -   **Text-to-Text**: Chatting menggunakan teks seperti biasa.
+    -   **Voice-to-Text**: Input suara dikonversi menjadi teks menggunakan **Whisper AI**.
+    -   **Text-to-Voice (TTS)**: Bot dapat membacakan balasan teks menjadi suara.
+    -   **Voice-to-Voice**: Percakapan langsung dua arah dengan bot menggunakan suara.
+-   **Kecerdasan Buatan (LLM)**: Menggunakan model **Gemma 2 9B SahabatAI** (`gmonsoon/gemma2-9b-cpt-sahabatai-v1-instruct-GGUF:Q2_K`) yang canggih untuk pemahaman konteks Bahasa Indonesia yang lebih natural.
+-   **Client-side Processing**: Pemrosesan suara (Speech-to-Text) dilakukan sebagian di sisi klien untuk responsivitas tinggi.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## 🛠️ Teknologi yang Digunakan
 
-## Technical considerations
+### Frontend (User Interface)
+-   **[Svelte 5](https://svelte.dev/)**: Framework UI reaktif generasi terbaru.
+-   **[Vite](https://vitejs.dev/)**: Build tool yang sangat cepat.
+-   **[Tailwind CSS v4](https://tailwindcss.com/)**: Utility-first CSS framework.
 
-**Why use this over SvelteKit?**
+### AI & Logic
+-   **Orchestrator / Backend**: **[n8n](https://n8n.io/)** (Workflow automation tool) untuk mengatur logika alur percakapan.
+-   **LLM Model**: `hf.co/gmonsoon/gemma2-9b-cpt-sahabatai-v1-instruct-GGUF:Q2_K`.
+-   **Speech-to-Text**: **[@xenova/transformers](https://huggingface.co/docs/transformers.js/index)** (Whisper) berjalan di browser.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## 📂 Struktur Project
 
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
 ```
+/
+├── backend/            # Resource terkait backend (n8n workflows, data, dll)
+│   ├── MLOPS.postman_collection.json  # Dokumentasi API / Testing
+│   └── BotKantinPCR.json              # Data/Schema referensi
+├── public/             # Aset statis
+├── src/                # Kode sumber aplikasi frontend
+│   ├── lib/            # Komponen Svelte, utilitas, dan worker
+│   │   ├── components/ # Atom, Molecule, Organism (Atomic Design)
+│   │   └── whisper-worker.js # Web Worker untuk memproses suara (Whisper)
+│   └── ...
+├── index.html          # Entry point aplikasi
+└── package.json        # Dependensi project
+```
+
+## 📦 Cara Instalasi dan Penggunaan
+
+Ikuti langkah-langkah berikut untuk menjalankan project ini di komputer Anda:
+
+### 1. Prasyarat
+Pastikan Anda sudah menginstal:
+-   [Node.js](https://nodejs.org/) (Versi LTS disarankan, misal v18 atau v20)
+-   Git
+
+### 2. Instalasi Dependensi
+Buka terminal di folder project, lalu jalankan perintah:
+
+```bash
+npm install
+```
+
+### 3. Menjalankan Aplikasi (Development Mode)
+Untuk menjalankan server lokal:
+
+```bash
+npm run dev
+```
+
+Buka browser dan kunjungi alamat yang muncul di terminal (biasanya `http://localhost:5173`).
+
+### 4. Build untuk Produksi
+Jika ingin membuat versi siap deploy:
+
+```bash
+npm run build
+```
+File hasil build akan berada di folder `dist/`.
+
+## 🔌 Integrasi Backend (n8n)
+
+Sistem backend menggunakan **n8n** sebagai orchestrator utama yang menghubungkan:
+1.  Input dari Frontend (Teks/Suara terjemahan).
+2.  Pemrosesan LLM (Gemma 2 SahabatAI).
+3.  Respon kembali ke Frontend.
+
+File koleksi Postman di folder `backend/` dapat digunakan untuk menguji endpoint n8n webhook secara terpisah.
+
+## 📝 Catatan Tambahan
+
+-   **Penggunaan Whisper AI**: Saat pertama kali fitur suara digunakan, aplikasi akan mengunduh model Whisper kecil dari HuggingFace Hub. Pastikan koneksi internet stabil saat penggunaan pertama.
