@@ -4,6 +4,44 @@
   export let role = 'user'; // 'user' | 'assistant'
   export let text = '';
   export let isTyping = false;
+
+  function parseMarkdown(input) {
+    if (!input) return '';
+    
+    // 1. Handle Bold (**text**)
+    let processed = input.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // 2. Handle Bullet Lists (* item)
+    const lines = processed.split('\n');
+    let output = '';
+    let inList = false;
+    
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('* ')) {
+        if (!inList) {
+          output += '<ul class="list-disc pl-6 my-2 space-y-1">';
+          inList = true;
+        }
+        output += `<li>${trimmed.substring(2)}</li>`;
+      } else {
+        if (inList) {
+          output += '</ul>';
+          inList = false;
+        }
+        // Add <br> for newlines, but avoid extra breaks around lists if possible
+        // For simplicity, we preserve the original line breaks structure
+        if (index > 0) output += '<br>';
+        output += line;
+      }
+    });
+    
+    if (inList) output += '</ul>';
+    
+    return output;
+  }
+
+  $: formattedText = parseMarkdown(text);
 </script>
 
 <div class="flex gap-[15px] max-w-full mb-5 {role === 'user' ? 'justify-end' : 'justify-start'}">
@@ -20,7 +58,7 @@
       {#if isTyping}
         Thinking...
       {:else}
-        {@html text.replace(/\n/g, '<br>')}
+        {@html formattedText}
       {/if}
     {/if}
   </div>
