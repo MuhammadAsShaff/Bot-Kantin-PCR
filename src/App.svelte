@@ -28,19 +28,107 @@
   
   // Session State
   let sessionId = '';
-  let sessionExpiryTimer;
+  let chatHistory = [];
 
   // --- Methods ---
+
+  const MAX_HISTORY = 50;
+
+  function loadHistoryIndex() {
+      try {
+          const idx = localStorage.getItem('chat_index');
+          return idx ? JSON.parse(idx) : [];
+      } catch { return []; }
+  }
+
+  function saveHistoryIndex(index) {
+      if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('chat_index', JSON.stringify(index));
+      }
+  }
+
+  function saveSessionToStorage(id, msgs) {
+      if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(`chat_session_${id}`, JSON.stringify(msgs));
+      }
+  }
+
+  function loadSessionFromStorage(id) {
+      try {
+          const data = localStorage.getItem(`chat_session_${id}`);
+          return data ? JSON.parse(data) : [];
+      } catch { return []; }
+  }
+
+  function deleteSessionFromStorage(id) {
+      if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(`chat_session_${id}`);
+      }
+  }
+
+  function updateCurrentSession() {
+      // 1. Save Messages to specific key
+      saveSessionToStorage(sessionId, messages);
+
+      // 2. Update Index (Metadata only)
+      const existingIdx = chatHistory.findIndex(c => c.id === sessionId);
+      
+      // Determine title
+      let title = 'New Chat';
+      const firstUserMsg = messages.find(m => m.role === 'user');
+      if (firstUserMsg) {
+           title = firstUserMsg.text.substring(0, 30) + (firstUserMsg.text.length > 30 ? '...' : '');
+      } else if (existingIdx !== -1) {
+           title = chatHistory[existingIdx].title || 'New Chat';
+      }
+
+      const meta = {
+          id: sessionId,
+          title: title,
+          timestamp: Date.now()
+      };
+
+      let newHistory = [...chatHistory];
+      if (existingIdx !== -1) {
+          newHistory.splice(existingIdx, 1);
+      }
+      newHistory.unshift(meta);
+
+      // 3. Prune if too large
+      if (newHistory.length > MAX_HISTORY) {
+          const toRemove = newHistory.pop();
+          deleteSessionFromStorage(toRemove.id); // Clean up old data
+      }
+
+      chatHistory = newHistory;
+      saveHistoryIndex(chatHistory);
+  }
+
+  function loadChat(id) {
+      // Load messages from specific storage key
+      const msgs = loadSessionFromStorage(id);
+      sessionId = id;
+      messages = msgs;
+      
+      if (window.innerWidth < 768) isSidebarOpen = false;
+  }
 
   function initSession() {
     sessionId = 'sess-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     console.log('New Session ID:', sessionId);
-    
-    if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
-    sessionExpiryTimer = setTimeout(() => {
-        initSession();
-        messages = [...messages, { role: 'assistant', text: '⚠️ Sesi chat telah berakhir (15 menit). Memulai sesi baru.' }];
-    }, 15 * 60 * 1000); 
+    messages = [];
+    // Don't save to history yet - wait for first message
+  }
+
+  function deleteChat(id) {
+      deleteSessionFromStorage(id);
+      chatHistory = chatHistory.filter(c => c.id !== id);
+      saveHistoryIndex(chatHistory);
+      
+      // If we deleted the current session, start a new one
+      if (sessionId === id) {
+          initSession();
+      }
   }
 
   function loadVoices() {
@@ -86,7 +174,52 @@
   onMount(() => {
      if (window.innerWidth < 768) isSidebarOpen = false;
 
-    initSession();
+    // Load History with Migration Support
+    const oldHistory = localStorage.getItem('chat_history');
+    const index = localStorage.getItem('chat_index');
+
+    if (oldHistory && !index) {
+        // MIGRATION: Convert old monolithic history to new split format
+        console.log('Migrating chat history...');
+        try {
+            const parsedOld = JSON.parse(oldHistory);
+            const newIndex = [];
+            
+            // Process each session
+            parsedOld.forEach(session => {
+                // Save messages to separate key
+                saveSessionToStorage(session.id, session.messages || []);
+                
+                // Add to index
+                newIndex.push({
+                    id: session.id,
+                    title: session.title,
+                    timestamp: session.timestamp
+                });
+            });
+            
+            chatHistory = newIndex;
+            saveHistoryIndex(chatHistory);
+            localStorage.removeItem('chat_history'); // Cleanup old blob
+            
+            if (chatHistory.length > 0) {
+                loadChat(chatHistory[0].id);
+            } else {
+                initSession();
+            }
+        } catch (e) {
+            console.error('Migration failed', e);
+            initSession();
+        }
+    } else {
+        // Normal Load
+        chatHistory = loadHistoryIndex();
+        if (chatHistory.length > 0) {
+            loadChat(chatHistory[0].id);
+        } else {
+            initSession();
+        }
+    }
     loadVoices();
     if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = loadVoices;
 
@@ -334,13 +467,20 @@
     window.speechSynthesis.speak(utterance);
   }
 
+  let chatInputComponent;
+
   async function handleSend() {
     if (!inputText.trim()) return;
+    if (isLoading) return;
 
     const userMessage = inputText;
     messages = [...messages, { role: 'user', text: userMessage }];
+    updateCurrentSession(); // Save user message immediately
     inputText = '';
     isLoading = true;
+    
+    // Keep focus on input
+    setTimeout(() => chatInputComponent?.focusInput(), 0);
 
     scrollToBottom();
 
@@ -356,6 +496,7 @@
       console.error(e);
       messages = [...messages, { role: 'assistant', text: `Jaringan bermasalah: ${e.message || 'Tidak dapat terhubung ke server.'}` }];
     } finally {
+      updateCurrentSession(); // Save to history
       isLoading = false;
       scrollToBottom();
     }
@@ -397,7 +538,11 @@
       onNewChat={startNewChat}
       onToggleMute={toggleMute}
       onToggleSettings={toggleSettings}
-      onToggleSidebar={toggleSidebar} 
+      onToggleSidebar={toggleSidebar}
+      {chatHistory}
+      currentSessionId={sessionId}
+      onLoadChat={loadChat}
+      onDeleteChat={deleteChat}
     />
     
     <!-- Overlay for mobile -->
@@ -444,6 +589,7 @@
 
   <div slot="input-area">
     <ChatInput 
+      bind:this={chatInputComponent}
       bind:value={inputText}
       {isLoading}
       {isListening}

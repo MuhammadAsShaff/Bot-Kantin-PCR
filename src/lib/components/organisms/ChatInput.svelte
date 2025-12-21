@@ -8,36 +8,33 @@
   export let onSend;
   export let onToggleListening;
 
+  let inputElement;
+
+  export function focusInput() {
+    inputElement?.focus();
+  }
+
   function handleKeydown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onSend();
+      if (!isLoading) {
+          onSend();
+      }
     }
   }
 </script>
 
 <div class="max-w-[900px] w-full mx-auto p-[0_10px_10px] md:p-[0_20px_20px] box-border bg-gemini-bg z-10 max-w-full overflow-hidden">
   <div class="bg-gemini-sidebar rounded-[28px] md:rounded-full flex items-center p-[8px_10px] md:p-[10px_15px] transition-colors focus-within:bg-gemini-hover">
-    <div class="hidden md:flex items-center gap-1.5">
-       <Button variant="icon" title="Add image">
-         <Icon path="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-       </Button>
-    </div>
-    
-    <!-- Mobile Image Button (Inside input area logic, maybe simpler for now just hidden on small) -->
-    <div class="md:hidden flex items-center">
-       <Button variant="icon" title="Add image" className="!p-1.5">
-         <Icon size="20px" path="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-       </Button>
-    </div>
+
     
     <input 
       type="text" 
       placeholder="Enter a prompt here" 
       class="flex-1 bg-transparent border-none text-gemini-text text-sm md:text-base p-2 md:p-2.5 outline-none placeholder:text-gemini-text-muted min-w-0"
       bind:value
+      bind:this={inputElement}
       on:keydown={handleKeydown}
-      disabled={isLoading}
     />
 
     <div class="flex items-center gap-0.5 md:gap-1.5">
