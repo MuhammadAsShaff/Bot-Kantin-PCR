@@ -2,43 +2,49 @@
 
 Project ini adalah antarmuka frontend untuk **Bot Kantin PCR**, sebuah aplikasi web cerdas yang memungkinkan pengguna berinteraksi dengan layanan kantin menggunakan teks maupun suara.
 
-Aplikasi ini dibangun menggunakan teknologi web modern, integrasi AI lokal di browser, dan backend berbasis workflow n8n.
+Aplikasi ini dibangun menggunakan teknologi web modern, integrasi AI canggih, dan backend berbasis workflow n8n.
 
 ## 🚀 Fitur Utama
 
 -   **Interaksi Multimoda**: Dukungan fleksibel untuk berbagai cara komunikasi:
     -   **Text-to-Text**: Chatting menggunakan teks seperti biasa.
-    -   **Voice-to-Text**: Input suara dikonversi menjadi teks menggunakan **Whisper AI**.
-    -   **Text-to-Voice (TTS)**: Bot dapat membacakan balasan teks menjadi suara.
-    -   **Voice-to-Voice**: Percakapan langsung dua arah dengan bot menggunakan suara.
--   **Kecerdasan Buatan (LLM)**: Menggunakan model **Gemma 2 9B SahabatAI** (`gmonsoon/gemma2-9b-cpt-sahabatai-v1-instruct-GGUF:Q2_K`) yang canggih untuk pemahaman konteks Bahasa Indonesia yang lebih natural.
--   **Client-side Processing**: Pemrosesan suara (Speech-to-Text) dilakukan sebagian di sisi klien untuk responsivitas tinggi.
+    -   **Voice-to-Text**: Input suara dikonversi menjadi teks secara lokal menggunakan **Whisper AI (WASM)**.
+    -   **Text-to-Voice (TTS)**: Bot dapat membacakan balasan teks dengan suara Bahasa Indonesia yang natural.
+    -   **Voice-to-Voice**: Percakapan langsung dua arah dengan bot menggunakan suara tanpa perlu mengetik.
+-   **Kecerdasan Buatan (LLM)**: Didukung oleh model **Google Gemini 2.5 Flash** yang sangat cepat dan akurat dalam memahami konteks percakapan serta data menu kantin.
+-   **Antarmuka Modern & Responsif**:
+    -   **Dynamic Island Status**: Indikator status visual (merekam, memproses, memuat) yang interaktif dan elegan.
+    -   **Manajemen Riwayat Chat**: Fitur penyimpanan riwayat percakapan persisten, hapus sesi, dan "New Chat".
+    -   **Mobile-First Design**: Tampilan yang optimal di perangkat seluler dengan sidebar adaptif.
+-   **Client-side Processing**: Pemrosesan suara (Speech-to-Text) dilakukan sepenuhnya di browser pengguna menggunakan Web Worker, menjaga privasi dan mengurangi latensi server.
 
 ## 🛠️ Teknologi yang Digunakan
 
 ### Frontend (User Interface)
--   **[Svelte 5](https://svelte.dev/)**: Framework UI reaktif generasi terbaru.
+-   **[Svelte 5](https://svelte.dev/)**: Framework UI reaktif generasi terbaru untuk performa tinggi.
 -   **[Vite](https://vitejs.dev/)**: Build tool yang sangat cepat.
--   **[Tailwind CSS v4](https://tailwindcss.com/)**: Utility-first CSS framework.
+-   **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first CSS framework untuk styling yang konsisten.
 
 ### AI & Logic
 -   **Orchestrator / Backend**: **[n8n](https://n8n.io/)** (Workflow automation tool) untuk mengatur logika alur percakapan.
--   **LLM Model**: `hf.co/gmonsoon/gemma2-9b-cpt-sahabatai-v1-instruct-GGUF:Q2_K`.
--   **Speech-to-Text**: **[@xenova/transformers](https://huggingface.co/docs/transformers.js/index)** (Whisper) berjalan di browser.
+-   **LLM Model**: **Google Gemini 2.5 Flash** (via n8n integration).
+-   **Speech-to-Text**: **[@xenova/transformers](https://huggingface.co/docs/transformers.js/index)** (Whisper) berjalan lokal di browser (WASM).
+-   **Text-to-Speech**: Web Speech API dengan prioritas suara Bahasa Indonesia.
 
 ## 📂 Struktur Project
 
 ```
 /
-├── backend/            # Resource terkait backend (n8n workflows, data, dll)
+├── backend/            # Resource terkait backend (n8n workflows, data menu JSON/CSV)
 │   ├── MLOPS.postman_collection.json  # Dokumentasi API / Testing
-│   └── BotKantinPCR.json              # Data/Schema referensi
-├── public/             # Aset statis
+│   └── BotKantinPCR.json              # Workflow n8n (Schema & Logic)
+├── public/             # Aset statis & Model Cache
 ├── src/                # Kode sumber aplikasi frontend
 │   ├── lib/            # Komponen Svelte, utilitas, dan worker
-│   │   ├── components/ # Atom, Molecule, Organism (Atomic Design)
-│   │   └── whisper-worker.js # Web Worker untuk memproses suara (Whisper)
-│   └── ...
+│   │   ├── components/ # Komponen UI (Atomic Design)
+│   │   ├── api.js      # Integrasi ke Webhook n8n
+│   │   └── whisper-worker.js # Web Worker untuk pemrosesan suara latar belakang
+│   └── App.svelte      # Entry point logic & layout utama
 ├── index.html          # Entry point aplikasi
 └── package.json        # Dependensi project
 ```
@@ -80,11 +86,13 @@ File hasil build akan berada di folder `dist/`.
 
 Sistem backend menggunakan **n8n** sebagai orchestrator utama yang menghubungkan:
 1.  Input dari Frontend (Teks/Suara terjemahan).
-2.  Pemrosesan LLM (Gemma 2 SahabatAI).
-3.  Respon kembali ke Frontend.
+2.  Pengambilan Data Menu (Live Fetch dari Google Sheets/CSV).
+3.  Pemrosesan LLM (**Gemini 2.5 Flash**).
+4.  Respon kembali ke Frontend.
 
-File koleksi Postman di folder `backend/` dapat digunakan untuk menguji endpoint n8n webhook secara terpisah.
+File workflow n8n tersedia di folder `backend/BotKantinPCR.json` yang dapat di-import langsung ke instance n8n Anda.
 
 ## 📝 Catatan Tambahan
 
--   **Penggunaan Whisper AI**: Saat pertama kali fitur suara digunakan, aplikasi akan mengunduh model Whisper kecil dari HuggingFace Hub. Pastikan koneksi internet stabil saat penggunaan pertama.
+-   **Penggunaan Whisper AI**: Saat pertama kali fitur suara digunakan, aplikasi akan mengunduh model Whisper (quantized) dari HuggingFace Hub. Pastikan koneksi internet stabil saat penggunaan pertama. Indikator "Mengunduh Model" akan muncul di Dynamic Island.
+-   **Izin Mikrofon**: Browser akan meminta izin akses mikrofon saat fitur suara diaktifkan pertama kali.
